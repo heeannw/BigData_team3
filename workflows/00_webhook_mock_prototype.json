@@ -1,0 +1,127 @@
+{
+  "name": "00 - Mock Webhook Prototype",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mock-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "cda87d1d-c598-4827-ac04-31b9e9e5f5df",
+      "name": "Webhook",
+      "webhookId": "e239123d-6644-48d3-bd05-cfabbee66eda"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bdcb114e-59c6-4544-9caa-09bd81a6253a",
+              "name": "success",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "c88fbeee-3adb-4eaf-b0ff-8ddaa35b6f3d",
+              "name": "requestType",
+              "value": "operation",
+              "type": "string"
+            },
+            {
+              "id": "7d6b4ba6-e3ef-4cb8-bd1b-aafcbc854512",
+              "name": "answer",
+              "value": "현재는 초기 프로토타입의 임시 응답입니다. 실제 RAG 연결 후 내부 문서를 근거로 답변합니다.",
+              "type": "string"
+            },
+            {
+              "id": "dcc6515e-56f6-4170-a5b7-edffdabf6cd0",
+              "name": "diagnosis",
+              "value": "null",
+              "type": "object"
+            },
+            {
+              "id": "14b3c78b-5c43-44e9-860a-7fc7c0e1c5a5",
+              "name": "sources",
+              "value": "[]",
+              "type": "array"
+            },
+            {
+              "id": "36823829-4e01-42b6-8bed-c81392191d59",
+              "name": "responseTimeMs",
+              "value": 0,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "f01d957b-24a9-4668-8f5e-8a4e67686d7e",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        448,
+        0
+      ],
+      "id": "24da39bc-7cbf-4a88-ae29-a90be7101bfe",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "11da78d5-d668-4a77-b508-02a04a3412b4",
+  "meta": {
+    "instanceId": "faa81fb33e318be6f58165b3c87df70caafd9662587f21db66ba627a5ecdfe46"
+  },
+  "nodeGroups": [],
+  "id": "j3c8FU1RC1gQkKdJ",
+  "tags": []
+}
