@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>n8n Mock Chat</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      max-width: 820px;
+      margin: 48px auto;
+      padding: 0 20px;
+      background: #f7f8fa;
+      color: #172033;
+      font-family: Arial, sans-serif;
+      line-height: 1.5;
+    }
+
+    .card {
+      padding: 28px;
+      border: 1px solid #e4e8ef;
+      border-radius: 16px;
+      background: #ffffff;
+      box-shadow: 0 8px 28px rgba(20, 35, 60, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 26px;
+    }
+
+    .hint {
+      margin: 0 0 24px;
+      color: #667085;
+    }
+
+    label {
+      display: block;
+      margin: 18px 0 8px;
+      font-weight: 700;
+    }
+
+    textarea,
+    select,
+    button {
+      width: 100%;
+      border-radius: 9px;
+      font: inherit;
+    }
+
+    textarea,
+    select {
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 13px;
+      border: 0;
+      background: #ea4b71;
+      color: #ffffff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #d93b60;
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: wait;
+    }
+
+    #status {
+      margin: 18px 0 0;
+      color: #475467;
+    }
+
+    pre {
+      min-height: 180px;
+      margin: 12px 0 0;
+      padding: 16px;
+      overflow-x: auto;
+      border-radius: 10px;
+      background: #111827;
+      color: #e5e7eb;
+      white-space: pre-wrap;
+    }
+
+    .error {
+      color: #b42318 !important;
+    }
+
+    .success {
+      color: #027a48 !important;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="card">
+    <h1>n8n Mock Chat</h1>
+    <p class="hint">
+      Production Webhook: <code>POST /webhook/mock-chat</code>
+    </p>
+
+    <label for="question">질문</label>
+    <textarea id="question">n8n 워크플로우 백업 방법을 알려줘.</textarea>
+
+    <label for="requestType">요청 유형</label>
+    <select id="requestType">
+      <option value="operation">operation</option>
+      <option value="diagnosis">diagnosis</option>
+    </select>
+
+    <button id="sendButton" type="button">n8n에 질문 보내기</button>
+
+    <p id="status">대기 중</p>
+    <pre id="result">아직 요청하지 않았습니다.</pre>
+  </main>
+
+  <script>
+    const API_URL = 'http://localhost:5678/webhook/mock-chat';
+
+    const questionElement = document.getElementById('question');
+    const requestTypeElement = document.getElementById('requestType');
+    const sendButton = document.getElementById('sendButton');
+    const statusElement = document.getElementById('status');
+    const resultElement = document.getElementById('result');
+
+    function setStatus(message, type = '') {
+      statusElement.textContent = message;
+      statusElement.className = type;
+    }
+
+    sendButton.addEventListener('click', async () => {
+      const question = questionElement.value.trim();
+
+      if (!question) {
+        setStatus('질문을 입력하세요.', 'error');
+        resultElement.textContent = '';
+        return;
+      }
+
+      sendButton.disabled = true;
+      sendButton.textContent = '요청 중...';
+      setStatus('n8n Production Webhook에 POST 요청을 보내는 중입니다...');
+      resultElement.textContent = '';
+
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            question: question,
+            requestType: requestTypeElement.value,
+            logText: '',
+            sessionId: 'browser-demo-session'
+          })
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        const data = contentType.includes('application/json')
+          ? await response.json()
+          : await response.text();
+
+        if (!response.ok) {
+          throw new Error(
+            typeof data === 'string'
+              ? `HTTP ${response.status}: ${data}`
+              : `HTTP ${response.status}: ${JSON.stringify(data, null, 2)}`
+          );
+        }
+
+        setStatus(`성공: HTTP ${response.status}`, 'success');
+        resultElement.textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        setStatus('요청 실패', 'error');
+        resultElement.textContent =
+          `${error.message}\n\n` +
+          'F12 → Console에서 CORS 관련 오류가 있는지 확인하세요.';
+      } finally {
+        sendButton.disabled = false;
+        sendButton.textContent = 'n8n에 질문 보내기';
+      }
+    });
+  </script>
+</body>
+</html>

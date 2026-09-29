@@ -1,0 +1,6 @@
+case_id,category,request_type,input_question,expected_result,actual_result,pass_fail,notes
+TC-001,정상_운영문의,operation,"n8n 워크플로우 백업 방법을 알려줘.","HTTP 200, JSON 응답, answer 필드 반환","HTTP 200, JSON 응답, answer 필드 반환",PASS,"Production Webhook 호출 성공"
+TC-002,정상_장애진단,diagnosis,"Webhook은 수신되는데 다음 노드가 실행되지 않습니다.","HTTP 200, JSON 응답 표시","HTTP 200, JSON 응답 표시; 응답 requestType=operation",PASS,"diagnosis 요청은 n8n에 정상 전달됨. 현재 Mock Workflow는 requestType 분기 미구현으로 operation 응답을 반환함"
+TC-003,빈_질문,operation,"","브라우저에서 질문 입력 안내, n8n API 미호출","질문을 입력하세요 메시지 표시",PASS,"클라이언트 측 입력 검증 성공. n8n API 요청 미발생"
+TC-004,특수문자_입력,operation,"한글·영문·숫자·특수문자 !@# 입력은 정상인가요?","HTTP 200, JSON 파싱 성공",,,선택 평가
+TC-005,긴_질문,operation,"n8n에서 Webhook Trigger로 요청을 받고 Respond to Webhook으로 JSON을 반환하는 기본 흐름을 설명해 주세요.","HTTP 200, 브라우저 UI 멈춤 없음",,,선택 평가
