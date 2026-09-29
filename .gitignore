@@ -23,3 +23,6 @@ offline-assets/model-files/*
 
 # n8n local export / backup
 n8n_data/
+
+# VS Code workspace settings
+.vscode/
