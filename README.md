@@ -174,6 +174,116 @@ http://localhost:5500
 
 > 브라우저 주소창에서 `http://localhost:5678/webhook/mock-chat`을 직접 열면 GET 요청이 발생합니다. 현재 Webhook은 POST 전용이므로 GET 요청에는 안내성 404가 표시되는 것이 정상입니다.
 
+### 6.5 Docker Compose 전체 환경 (폐쇄망 인프라)
+
+`frontend(Nginx)`, `n8n`, `postgres`, `qdrant`, `ollama` 5개 서비스를 한 번에 기동합니다. 모든 스크립트는 bash(`.sh`)와 Windows PowerShell(`.ps1`) 두 가지로 제공합니다. Windows 폐쇄망 PC에서는 `scripts\install.bat`을 더블클릭하면 됩니다.
+
+```text
+브라우저 → frontend(Nginx :8080) ─ /api/* → n8n(:5678) /webhook/* ─→ qdrant(Vector DB)
+                                                                  └→ ollama(LLM·Embedding)
+                                              n8n 영속 데이터 → postgres
+```
+
+| 서비스 | 이미지(버전 고정) | 외부 포트 | 비고 |
+|---|---|---|---|
+| frontend | `offline-rag-frontend:local` (nginx 1.30) | 8080 | `/api/<path>` → n8n `/webhook/<path>` 프록시 |
+| n8n | `n8nio/n8n:2.41.3` | 5678 | Workflow 편집·실행 |
+| postgres | `postgres:17-alpine` | 없음 | n8n Workflow·실행 이력 저장 |
+| qdrant | `qdrant/qdrant:v1.19.1` | 127.0.0.1:6333 | 개발 디버깅용으로 로컬에만 노출 |
+| ollama | `ollama/ollama:0.35.0` | 127.0.0.1:11434 | 모델 파일은 `offline-assets/model-files/`에 저장 |
+
+**인터넷 PC에서 반입 패키지 준비** (이미지 pull·저장, 모델 다운로드)
+
+```bash
+bash scripts/prepare-offline.sh
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\prepare-offline.ps1
+```
+
+완료 후 저장소 폴더 전체를 폐쇄망 PC로 복사합니다. 반입 대상은 `offline-assets/docker-images/offline-rag-images.tar`(약 4GB)와 `offline-assets/model-files/`(bge-m3 + qwen2.5:3b, 약 3GB)입니다. 둘 다 `.gitignore` 대상이라 GitHub에는 올라가지 않습니다.
+
+**폐쇄망 PC에서 설치·기동** (`.env` 생성·비밀값 자동 생성 → 이미지 load → 기동 → 자격증명·Workflow import/publish → 헬스체크)
+
+```bash
+bash scripts/install.sh
+```
+
+```powershell
+scripts\install.bat
+```
+
+| 스크립트 (`.sh` / `.ps1`) | 역할 |
+|---|---|
+| `prepare-offline` | [인터넷 PC] 이미지 `.tar` 저장, Ollama 모델 다운로드 |
+| `install` (+ `install.bat`) | [폐쇄망 PC] 설치·기동 전체 수행. `.tar`가 있으면 `--pull never`로 기동하여 인터넷 접근 시 즉시 실패 |
+| `import-workflows` | 자격증명과 `workflows/*.json`을 n8n에 import 후 publish (JSON 수정 후 재실행 가능) |
+| `ingest-documents` | 지식베이스 문서를 Qdrant에 재적재. 서비스·임베딩 모델 사전 점검, 실패 시 종료 코드 1 |
+| `health-check` | 컨테이너·서비스·모델·컬렉션 상태 점검 |
+
+> 모든 설정값은 `.env`(= `.env.example` 복사본)에서 관리합니다. `.env`는 커밋하지 않습니다.
+
+**n8n 자격증명 (자동 등록)**: `workflows/credentials/local-services.json`이 import되어 아래 두 자격증명이 생깁니다. 02 질의응답 Workflow의 Qdrant Vector Store / Embeddings Ollama / Ollama Chat Model 노드에서 선택하면 됩니다. 비밀값이 없는 내부 주소라 저장소에 포함합니다.
+
+| 이름 | id | 값 |
+|---|---|---|
+| Qdrant (local) | `qdrantLocalCred1` | `http://qdrant:6333` |
+| Ollama (local) | `ollamaLocalCred1` | `http://ollama:11434` |
+
+**검증 기록 (2026-09-29, Windows 11 / Docker Desktop, CPU 16코어·GPU 없음)**
+
+| 항목 | 결과 |
+|---|---|
+| 이미지 삭제 후 `.tar`만으로 `install.ps1` 설치 | 성공, 약 7분 (대부분 이미지 load) |
+| 헬스체크 (`.sh`, `.ps1`) | 전 항목 OK |
+| n8n 기본 Qdrant Vector Store 노드로 적재 데이터 검색 | `pageContent`·`metadata` 정상 반환 |
+| qwen2.5:3b RAG 프롬프트(약 1,100토큰) 응답 | 첫 호출 21초(모델 로드 포함), 이후 6초, 약 17 tokens/s |
+| Ollama 컨텍스트 길이 | 기본 4096 → 8192로 설정 (`OLLAMA_CONTEXT_LENGTH`) |
+
+### 6.6 문서 적재 (01 문서 적재 Workflow)
+
+`knowledge-base/<카테고리>/*.md|*.txt` 문서를 읽어 **섹션 분리 → 청크 분할 → bge-m3 임베딩 → Qdrant 저장**을 수행합니다.
+
+```bash
+bash scripts/ingest-documents.sh
+# 또는 n8n 편집기에서 "01 - 문서 적재" Workflow 를 수동 실행
+```
+
+- 실행할 때마다 컬렉션(`knowledge_base`)을 **전체 재생성**합니다. 임베딩까지 성공한 뒤에만 기존 컬렉션을 교체하므로, 적재가 실패해도 기존 데이터는 유지됩니다.
+- 문서가 없으면 `{"success": false, "error": "NO_DOCUMENTS", "message": ...}`를 반환하고 컬렉션은 건드리지 않습니다.
+- 02 Workflow의 Embeddings Ollama 노드는 적재와 같은 모델(`bge-m3:latest`)을 써야 합니다. 모델이 다르면 벡터 차원·공간이 달라 검색되지 않습니다.
+- 청크 크기는 `.env`의 `CHUNK_SIZE`(기본 800자), `CHUNK_OVERLAP`(기본 100자)으로 조정합니다.
+- 문서 맨 위에 front matter를 넣으면 메타데이터로 저장됩니다(모두 선택 사항).
+
+```markdown
+---
+title: n8n 워크플로우 백업 가이드
+category: operations        # 생략 시 상위 폴더명
+version: 1.0
+keywords: [n8n, 백업, export]
+---
+# n8n 워크플로우 백업
+## CLI 백업
+...
+```
+
+Qdrant 포인트 payload 구조 (n8n Qdrant Vector Store 노드 기본 키 `content`/`metadata`와 호환):
+
+```json
+{
+  "content": "청크 본문",
+  "metadata": {
+    "documentName": "backup.md", "title": "n8n 워크플로우 백업 가이드",
+    "category": "operations", "section": "n8n 워크플로우 백업 > CLI 백업",
+    "chunkId": "operations/backup.md#000", "chunkIndex": 0,
+    "source": "operations/backup.md", "version": "1.0", "keywords": ["n8n", "백업", "export"]
+  }
+}
+```
+
+`metadata.documentName / category / section / chunkId`는 API 응답 `sources` 필드에 그대로 사용할 수 있습니다. `metadata.category`에는 필터 검색용 인덱스가 생성됩니다.
+
 ## 7. API 명세
 
 ### Endpoint

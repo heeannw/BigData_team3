@@ -1,0 +1,565 @@
+{
+  "name": "01 - 문서 적재 (Knowledge Base → Qdrant)",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        100
+      ],
+      "id": "9f0efdf4-eacb-57ec-b6f6-290da2e6e5a1",
+      "name": "수동 실행"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ingest-documents",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        200
+      ],
+      "id": "be126b36-1a84-5b22-aba2-f0c7c9e78087",
+      "name": "적재 Webhook",
+      "webhookId": "6c6223f5-536e-5460-aaea-1f3614df8fe9",
+      "notes": "POST /webhook/ingest-documents\n(scripts/ingest-documents.sh)",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "41cfdbc5-c1d4-5b94-8c8c-3f454a6dca2b",
+              "name": "qdrantUrl",
+              "value": "={{ $env.QDRANT_URL || 'http://qdrant:6333' }}",
+              "type": "string"
+            },
+            {
+              "id": "d81c8278-176f-5ef9-af16-3b0231868f91",
+              "name": "collection",
+              "value": "={{ $env.QDRANT_COLLECTION || 'knowledge_base' }}",
+              "type": "string"
+            },
+            {
+              "id": "e6557b37-b54f-5dd8-9f64-4000e4c2ffbd",
+              "name": "ollamaUrl",
+              "value": "={{ $env.OLLAMA_BASE_URL || 'http://ollama:11434' }}",
+              "type": "string"
+            },
+            {
+              "id": "21eed8d1-976b-55f1-81b3-4da6288202d7",
+              "name": "embedModel",
+              "value": "={{ $env.OLLAMA_EMBED_MODEL || 'bge-m3' }}",
+              "type": "string"
+            },
+            {
+              "id": "d3a70794-8ab0-5cb4-94cb-b3d466d135ef",
+              "name": "knowledgeBaseDir",
+              "value": "={{ $env.KNOWLEDGE_BASE_DIR || '/data/knowledge-base' }}",
+              "type": "string"
+            },
+            {
+              "id": "2e11969d-9c34-505c-bc66-054ee483e404",
+              "name": "chunkSize",
+              "value": "={{ Number($env.CHUNK_SIZE || 800) }}",
+              "type": "number"
+            },
+            {
+              "id": "2dfee678-fb42-57dc-a868-a5eea5080d20",
+              "name": "chunkOverlap",
+              "value": "={{ Number($env.CHUNK_OVERLAP || 100) }}",
+              "type": "number"
+            },
+            {
+              "id": "eb8f5baa-de5f-5d58-90b0-896675f46d17",
+              "name": "startedAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        100
+      ],
+      "id": "126a5097-e3af-5b83-a810-fd87a980d8c1",
+      "name": "설정",
+      "notes": "docker-compose.yml 의 n8n 환경변수에서 읽음",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ $('설정').first().json.qdrantUrl }}/collections/{{ $('설정').first().json.collection }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        100
+      ],
+      "id": "6561ea66-9e0a-551f-9d3a-ed4450d34cbf",
+      "name": "기존 컬렉션 삭제",
+      "onError": "continueRegularOutput",
+      "executeOnce": true,
+      "notes": "임베딩까지 성공한 뒤에만 교체 (실패 시 기존 데이터 유지)",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('설정').first().json.qdrantUrl }}/collections/{{ $('설정').first().json.collection }}",
+        "options": {
+          "timeout": 60000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ vectors: { size: $('Qdrant 포인트 구성').first().json.points[0].vector.length, distance: 'Cosine' } }) }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        100
+      ],
+      "id": "415ef622-b6ac-571f-861a-a47db1092ca6",
+      "name": "컬렉션 생성",
+      "executeOnce": true,
+      "notes": "벡터 차원 = 임베딩 모델 출력 차원",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('설정').first().json.qdrantUrl }}/collections/{{ $('설정').first().json.collection }}/index?wait=true",
+        "options": {
+          "timeout": 60000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ field_name: 'metadata.category', field_schema: 'keyword' }) }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2400,
+        100
+      ],
+      "id": "cb455a36-3dd6-534b-a658-72390a3bf823",
+      "name": "카테고리 인덱스 생성",
+      "executeOnce": true,
+      "notes": "metadata.category 필터 검색용",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// 컬렉션 준비 노드들의 응답 대신, 앞에서 만든 포인트 배치를 다시 흘려보낸다\nreturn $('Qdrant 포인트 구성').all();\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        100
+      ],
+      "id": "c3d1c81e-e62e-5bab-9c57-d5eba6a7bba8",
+      "name": "포인트 복원"
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "={{ $('설정').first().json.knowledgeBaseDir }}/**/*.{md,txt}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        480,
+        100
+      ],
+      "id": "c106cfb4-6cde-5874-8a98-efa202b05189",
+      "name": "문서 읽기",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "notes": "knowledge-base/**/*.md, *.txt",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {
+          "keepSource": "both"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        720,
+        100
+      ],
+      "id": "24087983-37f8-5e19-a2da-f740b2cd9539",
+      "name": "텍스트 추출",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 문서 → 섹션(Markdown 제목) → 청크 분할\n// 출력: 청크 1개당 item 1개 { content, embedText, metadata }\nconst cfg = $('설정').first().json;\nconst CHUNK_SIZE = Number(cfg.chunkSize) || 800;\nconst CHUNK_OVERLAP = Math.min(Number(cfg.chunkOverlap) || 0, Math.floor(CHUNK_SIZE / 2));\nconst BASE_DIR = String(cfg.knowledgeBaseDir).replace(/\\/+$/, '');\n\n// --- YAML front matter (key: value, key: [a, b]) 간이 파서 ---\nfunction parseFrontMatter(text) {\n  const m = text.match(/^﻿?---\\r?\\n([\\s\\S]*?)\\r?\\n---[ \\t]*(\\r?\\n|$)/);\n  if (!m) return { meta: {}, body: text.replace(/^﻿/, '') };\n  const meta = {};\n  for (const line of m[1].split(/\\r?\\n/)) {\n    const kv = line.match(/^([A-Za-z_][\\w-]*)\\s*:\\s*(.*)$/);\n    if (!kv) continue;\n    let v = kv[2].trim();\n    if (/^\\[.*\\]$/.test(v)) {\n      v = v.slice(1, -1).split(',').map((s) => s.trim().replace(/^[\"']|[\"']$/g, '')).filter(Boolean);\n    } else {\n      v = v.replace(/^[\"']|[\"']$/g, '');\n    }\n    meta[kv[1]] = v;\n  }\n  return { meta, body: text.slice(m[0].length) };\n}\n\n// --- Markdown 제목(#) 기준 섹션 분리. section 은 \"상위 > 하위\" 경로 ---\nfunction splitSections(body) {\n  const sections = [];\n  const path = [];\n  let buf = [];\n  let inFence = false;\n  const flush = () => {\n    const text = buf.join('\\n').trim();\n    if (text) sections.push({ section: path.filter(Boolean).join(' > '), text });\n    buf = [];\n  };\n  for (const line of body.split(/\\r?\\n/)) {\n    if (/^\\s*(```|~~~)/.test(line)) inFence = !inFence;\n    const h = !inFence && line.match(/^(#{1,6})\\s+(.+?)\\s*#*\\s*$/);\n    if (h) {\n      flush();\n      const level = h[1].length;\n      path.length = level - 1;\n      path[level - 1] = h[2].trim();\n      continue;\n    }\n    buf.push(line);\n  }\n  flush();\n  return sections;\n}\n\n// --- 길이 제한 분할: 문단 → 문장 → 강제 절단 순으로 경계를 찾고, 앞 청크 끝부분을 겹친다 ---\nfunction splitText(text) {\n  if (text.length <= CHUNK_SIZE) return [text];\n  const pieces = [];\n  for (const para of text.split(/\\n{2,}/)) {\n    if (para.length <= CHUNK_SIZE) { pieces.push(para); continue; }\n    for (const sent of para.split(/(?<=[.!?。])\\s+|\\n/)) {\n      for (let i = 0; i < sent.length; i += CHUNK_SIZE) pieces.push(sent.slice(i, i + CHUNK_SIZE));\n    }\n  }\n  const chunks = [];\n  let cur = '';\n  for (const p of pieces) {\n    if (cur && cur.length + p.length + 2 > CHUNK_SIZE) {\n      chunks.push(cur.trim());\n      const tail = CHUNK_OVERLAP > 0 ? cur.slice(-CHUNK_OVERLAP) : '';\n      cur = tail && tail.length + p.length + 2 <= CHUNK_SIZE ? tail + '\\n\\n' + p : p;\n    } else {\n      cur = cur ? cur + '\\n\\n' + p : p;\n    }\n  }\n  if (cur.trim()) chunks.push(cur.trim());\n  return chunks;\n}\n\nconst out = [];\nfor (const item of $input.all()) {\n  const bin = (item.binary && item.binary.data) || {};\n  const fileName = bin.fileName || item.json.fileName || 'unknown';\n  const dir = String(bin.directory || '').replace(/\\/+$/, '');\n  const relDir = dir.startsWith(BASE_DIR) ? dir.slice(BASE_DIR.length).replace(/^\\/+/, '') : dir;\n  const relativePath = relDir ? `${relDir}/${fileName}` : fileName;\n\n  const raw = String(item.json.data || '');\n  const { meta, body } = parseFrontMatter(raw);\n  if (!body.trim()) continue;\n\n  const documentName = meta.documentName || fileName;\n  const title = meta.title || fileName.replace(/\\.[^.]+$/, '');\n  const category = meta.category || relDir.split('/')[0] || 'uncategorized';\n  const keywords = Array.isArray(meta.keywords) ? meta.keywords : meta.keywords ? [meta.keywords] : [];\n\n  let index = 0;\n  for (const s of splitSections(body)) {\n    for (const text of splitText(s.text)) {\n      const chunkId = `${relativePath}#${String(index).padStart(3, '0')}`;\n      out.push({\n        json: {\n          content: text,\n          // 임베딩에는 문서 제목·섹션을 함께 넣어 검색 정확도를 높인다 (저장되는 content 는 본문만)\n          embedText: [title, s.section, text].filter(Boolean).join('\\n'),\n          metadata: {\n            documentName,\n            title,\n            category,\n            section: s.section || title,\n            chunkId,\n            chunkIndex: index,\n            source: relativePath,\n            version: meta.version || null,\n            keywords,\n          },\n        },\n      });\n      index++;\n    }\n  }\n}\n\n// 문서가 없으면 다음 IF 노드가 실패 응답으로 보낸다 (기존 컬렉션은 건드리지 않음)\nif (out.length === 0) {\n  return [{ json: { noDocuments: true, knowledgeBaseDir: BASE_DIR } }];\n}\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        100
+      ],
+      "id": "f2cd4c86-69f0-52b9-b147-44a71b8b3712",
+      "name": "청크 분할",
+      "notes": "Markdown 제목 기준 섹션 → 길이 기준 청크",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// 임베딩 API 호출 횟수를 줄이기 위해 청크를 16개씩 묶는다\nconst BATCH_SIZE = 16;\nconst all = $input.all().map((i) => i.json);\nconst batches = [];\nfor (let i = 0; i < all.length; i += BATCH_SIZE) {\n  batches.push({ json: { startId: i + 1, chunks: all.slice(i, i + BATCH_SIZE) } });\n}\nreturn batches;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        100
+      ],
+      "id": "252356c9-aaf5-556e-b2f6-087fb3893554",
+      "name": "배치 구성"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('설정').first().json.ollamaUrl }}/api/embed",
+        "options": {
+          "timeout": 600000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $('설정').first().json.embedModel, input: $json.chunks.map((c) => c.embedText) }) }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        100
+      ],
+      "id": "4c4695bb-91a5-5e1f-9f6b-040a4abc1411",
+      "name": "임베딩 생성",
+      "notes": "Ollama /api/embed (배치)",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// 임베딩 결과와 청크를 합쳐 Qdrant 포인트로 만든다.\n// payload 는 n8n Qdrant Vector Store 노드 기본값(content / metadata)과 호환된다.\nconst batches = $('배치 구성').all();\nreturn $input.all().map((item, b) => {\n  const { startId, chunks } = batches[b].json;\n  const vectors = item.json.embeddings;\n  if (!Array.isArray(vectors) || vectors.length !== chunks.length) {\n    throw new Error(`임베딩 개수 불일치: batch ${b}, 청크 ${chunks.length}개, 벡터 ${vectors && vectors.length}개`);\n  }\n  return {\n    json: {\n      points: chunks.map((c, i) => ({\n        id: startId + i,\n        vector: vectors[i],\n        payload: { content: c.content, metadata: c.metadata },\n      })),\n    },\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        100
+      ],
+      "id": "970023d8-afe5-5256-8009-45ba450e6f98",
+      "name": "Qdrant 포인트 구성"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('설정').first().json.qdrantUrl }}/collections/{{ $('설정').first().json.collection }}/points?wait=true",
+        "options": {
+          "timeout": 120000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ points: $json.points }) }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2880,
+        100
+      ],
+      "id": "fe287c02-a5cf-522d-9ca1-4c54b5dce860",
+      "name": "Qdrant 저장"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('설정').first().json;\nconst chunks = $('청크 분할').all().map((i) => i.json.metadata);\nconst byCategory = {};\nconst documents = new Set();\nfor (const m of chunks) {\n  byCategory[m.category] = (byCategory[m.category] || 0) + 1;\n  documents.add(m.source);\n}\nconst failed = $input.all().filter((i) => i.json.status !== 'ok').length;\nreturn [{\n  json: {\n    success: failed === 0,\n    collection: cfg.collection,\n    embedModel: cfg.embedModel,\n    vectorSize: $('Qdrant 포인트 구성').first().json.points[0].vector.length,\n    documentCount: documents.size,\n    chunkCount: chunks.length,\n    chunksByCategory: byCategory,\n    failedBatches: failed,\n    documents: [...documents].sort(),\n    startedAt: cfg.startedAt,\n    finishedAt: $now.toISO(),\n  },\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        100
+      ],
+      "id": "36622bda-155e-5842-8b76-0655db57c523",
+      "name": "적재 결과 요약"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0aa6d4f4-49b7-5861-a704-712fb4d4ec7d",
+              "leftValue": "={{ $json.noDocuments === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1080,
+        300
+      ],
+      "id": "c11d0d6d-86ef-5352-9a0d-9f6a5d81f4ce",
+      "name": "문서 없음?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a52e5f2b-c710-56dd-bb1d-2a136eafa20b",
+              "name": "success",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "f3e58643-5f14-54cf-b602-5a91ba0c8149",
+              "name": "error",
+              "value": "NO_DOCUMENTS",
+              "type": "string"
+            },
+            {
+              "id": "a06801a2-3569-51fa-b194-e989c2a10a2c",
+              "name": "message",
+              "value": "={{ '적재할 문서가 없습니다. ' + $json.knowledgeBaseDir + ' (호스트: knowledge-base/<카테고리>/) 아래에 .md/.txt 파일을 추가하세요. 기존 컬렉션은 변경하지 않았습니다.' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1320,
+        300
+      ],
+      "id": "f54bc45f-d081-5eb7-83be-37193576c236",
+      "name": "문서 없음 응답"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "수동 실행": {
+      "main": [
+        [
+          {
+            "node": "설정",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "설정": {
+      "main": [
+        [
+          {
+            "node": "문서 읽기",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "문서 읽기": {
+      "main": [
+        [
+          {
+            "node": "텍스트 추출",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "텍스트 추출": {
+      "main": [
+        [
+          {
+            "node": "청크 분할",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "청크 분할": {
+      "main": [
+        [
+          {
+            "node": "문서 없음?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "배치 구성": {
+      "main": [
+        [
+          {
+            "node": "임베딩 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "임베딩 생성": {
+      "main": [
+        [
+          {
+            "node": "Qdrant 포인트 구성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant 포인트 구성": {
+      "main": [
+        [
+          {
+            "node": "기존 컬렉션 삭제",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "기존 컬렉션 삭제": {
+      "main": [
+        [
+          {
+            "node": "컬렉션 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "컬렉션 생성": {
+      "main": [
+        [
+          {
+            "node": "카테고리 인덱스 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "카테고리 인덱스 생성": {
+      "main": [
+        [
+          {
+            "node": "포인트 복원",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "포인트 복원": {
+      "main": [
+        [
+          {
+            "node": "Qdrant 저장",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant 저장": {
+      "main": [
+        [
+          {
+            "node": "적재 결과 요약",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "적재 Webhook": {
+      "main": [
+        [
+          {
+            "node": "설정",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "문서 없음?": {
+      "main": [
+        [
+          {
+            "node": "문서 없음 응답",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "배치 구성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "rag01DocIngest01",
+  "tags": []
+}
