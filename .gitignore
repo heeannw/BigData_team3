@@ -1,0 +1,25 @@
+# Environment variables
+.env
+
+# macOS / Windows system files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Docker local data
+data/
+volumes/
+
+# Local models and exported Docker images
+offline-assets/docker-images/*.tar
+offline-assets/model-files/*
+!offline-assets/model-files/.gitkeep
+
+# n8n local export / backup
+n8n_data/
