@@ -9,11 +9,11 @@ TS-007,troubleshooting/browser_request_failed_cors.md,"챗봇 화면에서 ""요
 TS-008,troubleshooting/chat_ui_access_failed.md,"챗봇 화면에 접속할 수 없을 때(localhost:5500 연결 거부, localhost:8080 403)",troubleshooting,장애 대응,1.0,2026-09-30,작성 완료(재현 검증 필요)
 OP-001,operations/offline_install_guide.md,폐쇄망 설치 절차(반입 → 설치 → 헬스체크),operations,설치·배포,1.0,2026-10-01,작성 완료(재현 검증 필요)
 OP-002,operations/docker_compose_operation.md,Docker Compose 기동·중지·초기화 방법,operations,운영,1.0,2026-10-01,작성 완료(재현 검증 필요)
-OP-003,operations/env_configuration.md,.env 환경변수 설정과 관리,operations,환경설정,,,작성 예정
-OP-004,operations/workflow_backup_restore.md,n8n 워크플로우 내보내기·백업·복원,operations,운영,,,작성 예정
-OP-005,operations/document_reingestion.md,지식베이스 문서 추가·수정 후 재적재 절차,operations,운영,,,작성 예정
-SC-001,security/offline_import_and_secrets.md,폐쇄망 반입 파일 관리와 비밀정보 취급 원칙,security,보안,,,작성 예정
-SC-002,security/encryption_key_and_credentials.md,N8N_ENCRYPTION_KEY와 자격증명 관리,security,보안,,,작성 예정
-RG-001,rag-guide/rag_overview.md,RAG 구조와 이 시스템의 동작 흐름,rag-guide,운영,,,작성 예정
-RG-002,rag-guide/chunk_tuning_guide.md,청크 크기·오버랩 조정과 검색 품질,rag-guide,환경설정,,,작성 예정
+OP-003,operations/env_configuration.md,.env 환경변수 설정과 관리,operations,환경설정,1.0,2026-10-01,작성 완료(재현 검증 필요)
+OP-004,operations/workflow_backup_restore.md,n8n 워크플로우 내보내기·백업·복원,operations,운영,1.0,2026-10-01,작성 완료(재현 검증 필요)
+OP-005,operations/document_reingestion.md,지식베이스 문서 추가·수정 후 재적재 절차,operations,운영,1.0,2026-10-01,작성 완료(재현 검증 필요)
+SC-001,security/offline_import_and_secrets.md,폐쇄망 반입 파일 관리와 비밀정보 취급 원칙,security,보안,1.0,2026-10-01,작성 완료(재현 검증 필요)
+SC-002,security/encryption_key_and_credentials.md,N8N_ENCRYPTION_KEY와 자격증명 관리,security,보안,1.0,2026-10-01,작성 완료(재현 검증 필요)
+RG-001,rag-guide/rag_overview.md,RAG 구조와 이 시스템의 동작 흐름,rag-guide,운영,1.0,2026-10-01,작성 완료(재현 검증 필요)
+RG-002,rag-guide/chunk_tuning_guide.md,청크 크기·오버랩 조정과 검색 품질,rag-guide,환경설정,1.0,2026-10-01,작성 완료(재현 검증 필요)
 OP-006,operations/health_check_guide.md,"서비스 상태 확인 방법(healthz, Qdrant 대시보드, 헬스체크 스크립트)",operations,운영,1.0,2026-10-01,작성 완료(재현 검증 필요)
