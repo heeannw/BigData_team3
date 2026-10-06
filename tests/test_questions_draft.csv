@@ -1,0 +1,13 @@
+﻿id,question,question_type,requestType,logText,expected_keywords,expected_source,expected_hold,note
+Q01,Webhook URL로 요청했더니 404가 나와요. 뭘 확인해야 해요?,문서에 답 있음,diagnosis,,게시|Production URL|POST,troubleshooting/webhook_not_triggering.md,false,
+Q02,n8n 컨테이너가 계속 재시작돼요. 어떤 명령어로 로그를 확인하나요?,문서에 답 있음,diagnosis,,docker compose logs n8n|N8N_ENCRYPTION_KEY,troubleshooting/container_restart_loop.md,false,
+Q03,docker compose up 할 때 5678 포트가 이미 사용 중이라고 나와요.,문서에 답 있음,diagnosis,Bind for 0.0.0.0:5678 failed: port is already allocated,netstat|lsof|포트 변경,troubleshooting/port_conflict.md,false,logText 포함 진단 케이스
+Q04,n8n에서 Ollama에 연결이 안 돼요. ECONNREFUSED가 떠요.,문서에 답 있음,diagnosis,,http://ollama:11434|localhost|서비스명,troubleshooting/service_connection_failed.md,false,
+Q05,문서 적재했더니 NO_DOCUMENTS라고 나와요.,문서에 답 있음,diagnosis,,knowledge-base|.md|.txt,troubleshooting/ingestion_no_documents.md,false,
+Q06,브라우저에서 질문을 보내면 요청 실패가 뜨고 콘솔에 CORS 오류가 나와요.,문서에 답 있음,diagnosis,blocked by CORS policy,Allowed Origins|/api,troubleshooting/browser_request_failed_cors.md,false,
+Q07,첫 질문만 답변이 아주 느린데 정상인가요?,문서에 답 있음,operation,,모델 로드|첫 호출|미리 호출,operations/health_check_guide.md|troubleshooting/ollama_model_issues.md,false,두 문서 중 하나 이상 출처
+Q08,폐쇄망 PC에 처음 설치하는 순서를 알려 주세요.,여러 내용 종합,operation,,prepare-offline|install.bat|ingest-documents|health-check,operations/offline_install_guide.md,false,설치 후 확인은 OP-006와 연결
+Q09,"설치 후 서비스가 정상인지 확인하려면 어떻게 하고, 문제가 있으면 어디를 봐야 해요?",여러 내용 종합,operation,,docker compose ps|healthz|health-check,operations/health_check_guide.md|troubleshooting/container_restart_loop.md,false,여러 문서 종합
+Q10,문서를 수정했는데 챗봇이 예전 내용으로 답해요. 어떻게 반영하나요?,여러 내용 종합,operation,,ingest-documents|전체 재적재,operations/document_reingestion.md|rag-guide/chunk_tuning_guide.md,false,
+Q11,쿠버네티스에 n8n을 배포하는 방법을 알려 주세요.,문서에 없음,operation,,제공된 내부 자료에서는 확인할 수 없습니다,,true,"답변 보류 기대, sources 빈 배열"
+Q12,n8n에 OpenAI API 키를 등록하는 방법을 알려 주세요.,문서에 없음,operation,,제공된 내부 자료에서는 확인할 수 없습니다,,true,폐쇄망 정책상 문서에 없음
