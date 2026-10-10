@@ -23,7 +23,7 @@
 |---|---|---|
 | 1 | 브라우저 Mock UI와 n8n Webhook의 API 연동 | ✅ 완료 |
 | 2 | 폐쇄망 인프라(Docker Compose) 구성 및 오프라인 설치 | ✅ 완료 |
-| 3 | 문서 수집·텍스트 추출·청킹·임베딩·Vector DB 저장 (RAG 데이터 파이프라인) | ✅ 완료 (실제 지식베이스 문서 작성 중) |
+| 3 | 문서 수집·텍스트 추출·청킹·임베딩·Vector DB 저장 (RAG 데이터 파이프라인) | ✅ 완료 (지식베이스 21개 문서 적재·검색 확인) |
 | 4 | `operation`과 `diagnosis` 요청 분기 | ⏳ 진행 예정 |
 | 5 | 검색된 문서를 근거로 LLM 답변 생성, 출처 반환, 근거 부족 시 답변 보류 | ⏳ 진행 예정 |
 | 6 | 평가 질문·기준으로 정확성, 근거 제시, 응답 시간, 장애 진단 품질 검증 | ⏳ 진행 예정 |
@@ -69,7 +69,6 @@ frontend(Nginx) · n8n · PostgreSQL · Qdrant · Ollama  (docker-compose 한 �
 - 검색 근거 문서 및 출처 표시, 근거 부족 시 답변 보류
 - 로그 기반 장애 원인 분석
 - 최종 챗봇 UI (`frontend/public/`에 추가 예정. 현재 `http://localhost:8080` 접속 시 403이 정상)
-- 실제 지식베이스 문서 (현재 `knowledge-base/` 폴더는 비어 있음)
 - 평가 자동화 Workflow
 - PDF·DOCX 문서 적재 (현재 `.md`, `.txt`만 지원)
 - 인증·권한 관리
@@ -184,7 +183,9 @@ n8n은 Docker 환경(6.5)으로 실행합니다. `install` 스크립트가 `work
 | `POST http://localhost:5678/webhook/ingest-documents` | 01 문서 적재 |
 
 - 이미 설치했다면 `docker compose up -d`로 다시 켭니다.
-- n8n 편집기에서 Workflow를 수정했다면 JSON으로 export해 `workflows/`에 저장한 뒤, 아래 명령으로 다시 등록합니다. JSON 최상위 `id`가 같으면 기존 Workflow를 덮어씁니다.
+- n8n 편집기에서 Workflow를 수정했다면 **Workflow 화면 우측 상단 `...` → Download**로 JSON을 받아 `workflows/`에 저장한 뒤, 아래 명령으로 다시 등록합니다. JSON 최상위 `id`가 같으면 기존 Workflow를 덮어씁니다.
+- 브라우저의 "다른 이름으로 저장"으로 저장한 파일은 Workflow JSON이 아니라 화면 HTML이므로 import할 수 없습니다. 이런 파일은 경고를 출력하고 건너뜁니다(나머지 Workflow는 정상 등록).
+- 재등록 후 n8n이 재시작되며, 재시작 직후 몇 초 동안은 Webhook이 이전 버전으로 실행됩니다. 스크립트가 15초를 기다린 뒤 끝나므로 완료 메시지가 나온 다음 호출합니다.
 
 ```bash
 bash scripts/import-workflows.sh
@@ -294,12 +295,14 @@ powershell -ExecutionPolicy Bypass -File scripts\ingest-documents.ps1
 - 문서가 없으면 `{"success": false, "error": "NO_DOCUMENTS", "message": ...}`를 반환하고 컬렉션은 건드리지 않습니다.
 - 02 Workflow의 Embeddings Ollama 노드는 적재와 같은 모델(`bge-m3:latest`)을 써야 합니다. 모델이 다르면 벡터 차원·공간이 달라 검색되지 않습니다.
 - 청크 크기는 `.env`의 `CHUNK_SIZE`(기본 800자), `CHUNK_OVERLAP`(기본 100자)으로 조정합니다.
-- `#`, `##` 제목 단위로 섹션이 나뉘고, 제목 경로가 출처(`section`)로 저장됩니다. 제목을 의미 있게 작성하면 출처 표시 품질이 좋아집니다.
+- `#`, `##` 제목 단위로 섹션을 나눈 뒤, **같은 상위 제목 아래 연속된 짧은 섹션은 `CHUNK_SIZE`까지 하나의 청크로 묶습니다.** 묶인 청크의 본문에는 `[증상]`처럼 소제목이 남고, 출처(`section`)는 `TS-003 포트 충돌 > 증상 · 영향 범위 · 가능한 원인`처럼 표시됩니다. `CHUNK_SIZE`를 넘는 섹션은 문단 단위로 나눕니다.
+- 임베딩할 때는 문서 제목·front matter `keywords`·섹션명을 본문 앞에 붙여 검색 정확도를 높이고, 저장되는 `content`에는 본문만 넣습니다. 사용자가 실제로 쓰는 표현을 `keywords`에 넣으면 검색이 잘 됩니다.
 - 카테고리는 상위 폴더명으로 자동 지정됩니다. 문서 맨 위에 front matter를 넣으면 메타데이터로 저장됩니다(모두 선택 사항).
 
 ```markdown
 ---
 title: n8n 워크플로우 백업 가이드
+doc_id: OP-004              # 출처 표시용 문서 번호 (metadata.docId)
 category: operations        # 생략 시 상위 폴더명
 version: 1.0
 keywords: [n8n, 백업, export]
@@ -315,7 +318,7 @@ Qdrant 포인트 payload 구조 (n8n Qdrant Vector Store 노드 기본 키 `cont
 {
   "content": "청크 본문",
   "metadata": {
-    "documentName": "backup.md", "title": "n8n 워크플로우 백업 가이드",
+    "documentName": "backup.md", "docId": "OP-004", "title": "n8n 워크플로우 백업 가이드",
     "category": "operations", "section": "n8n 워크플로우 백업 > CLI 백업",
     "chunkId": "operations/backup.md#000", "chunkIndex": 0,
     "source": "operations/backup.md", "version": "1.0", "keywords": ["n8n", "백업", "export"]
@@ -324,6 +327,19 @@ Qdrant 포인트 payload 구조 (n8n Qdrant Vector Store 노드 기본 키 `cont
 ```
 
 `metadata.documentName / category / section / chunkId`는 API 응답 `sources` 필드에 그대로 사용할 수 있습니다. `metadata.category`에는 필터 검색용 인덱스가 생성됩니다.
+
+**검색 품질 점검 (2026-10-10, 지식베이스 21개 문서 → 49개 청크, 적재 약 40초)**
+
+`tests/test_questions_draft.csv`의 질문을 bge-m3로 임베딩해 Qdrant 상위 4개를 검색한 결과입니다(n8n Qdrant Vector Store 노드와 같은 방식).
+
+| 청크 방식 | 청크 수 | 기대 출처 1위 | 기대 출처 상위 4개 | 상위 4개 본문 합계(평균) |
+|---|---|---|---|---|
+| 섹션별 분할 (이전) | 174 | 9/10 | 10/10 | 732자 |
+| 짧은 섹션 묶기 | 49 | 9/10 | 9/10 | 2,141자 |
+| **짧은 섹션 묶기 + keywords 임베딩 (현재)** | 49 | **10/10** | **10/10** | 2,125자 |
+
+- 문서에 없는 질문(Q11·Q12)의 1위 유사도(최대 0.607)가 정답 질문의 최저값(0.552)보다 높습니다. **유사도 점수 기준선만으로는 답변 보류를 판단할 수 없으므로**, 02 Workflow에서 LLM 프롬프트로 근거 여부를 판단해야 합니다.
+- 평가 질문이 10개뿐이므로, 질문이 늘어나면 같은 방식으로 다시 점검합니다.
 
 ## 7. API 명세
 
@@ -451,7 +467,7 @@ powershell -ExecutionPolicy Bypass -File scripts\health-check.ps1
 | 1 | 원희 | Docker Compose 기동, frontend/Nginx 기본 설정 | ✅ 완료 |
 | 2 | 박윤아 | n8n Webhook 임시 JSON 응답 (Mock) | ✅ 완료 (표정인 프로토타입) |
 | 3 | 박윤아 | HTML/CSS/JavaScript 챗봇 화면, 입력·전송·로딩·오류 처리 | ⏳ |
-| 4 | 김해인 | 운영 문서·장애 사례집 작성 및 카테고리 분류 | ⏳ |
+| 4 | 김해인 | 운영 문서·장애 사례집 작성 및 카테고리 분류 | ✅ 완료 (21개 문서, `knowledge-base/document_index.csv`) |
 | 5 | 원희 | 문서 적재 Workflow (청크·임베딩·Qdrant 저장) | ✅ 완료 (문서 추가 시 재적재) |
 | 6 | 박윤아 | RAG 검색·Ollama 답변, 일반/진단 분기, 출처·답변 보류 | ⏳ |
 | 7 | 표정인 | 평가 Workflow로 응답·검색 품질·출처·답변 보류 자동 검증 | ⏳ |
