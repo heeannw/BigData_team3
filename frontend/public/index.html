@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Offline RAG Assistant</title>
+
+  <link
+    rel="stylesheet"
+    href="./style.css"
+  />
+</head>
+
+<body>
+
+  <div class="app-layout">
+
+    <!-- =========================
+         Sidebar
+    ========================== -->
+
+    <aside class="sidebar">
+
+      <div class="brand">
+
+        <div class="brand-logo">
+          R
+        </div>
+
+        <div class="brand-text">
+
+          <strong>
+            Offline RAG
+          </strong>
+
+          <span>
+            Internal Assistant
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <div class="sidebar-section-title">
+        요청 유형
+      </div>
+
+
+      <nav class="mode-navigation">
+
+        <button
+          id="operationModeButton"
+          class="mode-button active"
+          type="button"
+        >
+
+          <span class="mode-icon">
+            ?
+          </span>
+
+          <span class="mode-info">
+
+            <strong>
+              운영 질의
+            </strong>
+
+            <small>
+              사용법 · 설정 · 운영 절차
+            </small>
+
+          </span>
+
+        </button>
+
+
+        <button
+          id="diagnosisModeButton"
+          class="mode-button"
+          type="button"
+        >
+
+          <span class="mode-icon">
+            !
+          </span>
+
+          <span class="mode-info">
+
+            <strong>
+              장애 진단
+            </strong>
+
+            <small>
+              오류 · 로그 · 점검 순서
+            </small>
+
+          </span>
+
+        </button>
+
+      </nav>
+
+
+      <div class="sidebar-status">
+
+        <div class="sidebar-status-title">
+
+          <span class="status-dot"></span>
+
+          <strong>
+            Local / Offline
+          </strong>
+
+        </div>
+
+        <p>
+          내부 자료만을 근거로 답변합니다.
+        </p>
+
+      </div>
+
+    </aside>
+
+
+    <!-- =========================
+         Main
+    ========================== -->
+
+    <main class="main-area">
+
+      <!-- Header -->
+
+      <header class="page-header">
+
+        <div class="page-header-inner">
+
+          <div
+            id="modeLabel"
+            class="mode-label"
+          >
+            운영 질의
+          </div>
+
+          <h1 id="pageTitle">
+            무엇을 도와드릴까요?
+          </h1>
+
+          <p id="pageDescription">
+            Docker, n8n, Qdrant, Ollama 등 내부 운영 문서를 기반으로 답변합니다.
+          </p>
+
+        </div>
+
+      </header>
+
+
+      <!-- Conversation -->
+
+      <section
+        id="conversation"
+        class="conversation"
+      >
+      </section>
+
+
+      <!-- Composer -->
+
+      <section class="composer-section">
+
+        <div class="composer-inner">
+
+          <div class="example-header">
+            예시 질문
+          </div>
+
+
+          <div class="example-row">
+
+            <div
+              id="exampleQuestions"
+              class="example-list"
+            >
+            </div>
+
+
+            <button
+              id="logToggleButton"
+              class="log-toggle-button hidden"
+              type="button"
+            >
+
+              <span class="log-plus">
+                +
+              </span>
+
+              오류 로그 추가
+
+            </button>
+
+          </div>
+
+
+          <div
+            id="logInputArea"
+            class="log-input-area hidden"
+          >
+
+            <div class="log-input-header">
+
+              <label for="logInput">
+                오류 로그
+              </label>
+
+              <button
+                id="logCloseButton"
+                class="log-close-button"
+                type="button"
+              >
+                닫기
+              </button>
+
+            </div>
+
+
+            <textarea
+              id="logInput"
+              placeholder="오류 로그를 입력하세요."
+            ></textarea>
+
+          </div>
+
+
+          <form
+            id="chatForm"
+            class="chat-form"
+          >
+
+            <textarea
+              id="questionInput"
+              rows="1"
+              placeholder="운영 관련 질문을 입력하세요."
+            ></textarea>
+
+            <button
+              id="sendButton"
+              class="send-button"
+              type="submit"
+            >
+              보내기
+            </button>
+
+          </form>
+
+        </div>
+
+      </section>
+
+    </main>
+
+  </div>
+
+
+  <script src="./app.js"></script>
+
+</body>
+</html>
