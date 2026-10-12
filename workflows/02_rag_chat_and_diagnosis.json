@@ -814,11 +814,6 @@
             "node": "장애 검색 결과 정리",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "장애 응답 반환",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -1026,7 +1021,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "65a2dacf-7839-439a-8be6-edf49c8a1994",
+  "versionId": "65b3d179-9957-4f64-9ddc-273d5737701e",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "92034e7835de26ca68d09dad546d2ada6bfc79b18f09e0854a49a3af1abcc21a"

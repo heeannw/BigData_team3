@@ -24,17 +24,22 @@
 | 1 | 브라우저 Mock UI와 n8n Webhook의 API 연동 | ✅ 완료 |
 | 2 | 폐쇄망 인프라(Docker Compose) 구성 및 오프라인 설치 | ✅ 완료 |
 | 3 | 문서 수집·텍스트 추출·청킹·임베딩·Vector DB 저장 (RAG 데이터 파이프라인) | ✅ 완료 (지식베이스 21개 문서 적재·검색 확인) |
-| 4 | `operation`과 `diagnosis` 요청 분기 | ⏳ 진행 예정 |
-| 5 | 검색된 문서를 근거로 LLM 답변 생성, 출처 반환, 근거 부족 시 답변 보류 | ⏳ 진행 예정 |
+| 4 | `operation`과 `diagnosis` 요청 분기 | ✅ 완료 |
+| 5 | 검색된 문서를 근거로 LLM 답변 생성, 출처 반환, 근거 부족 시 답변 보류 | ✅ 완료 |
 | 6 | 평가 질문·기준으로 정확성, 근거 제시, 응답 시간, 장애 진단 품질 검증 | ⏳ 진행 예정 |
 
 ## 3. 현재 구현 범위
 
-현재 버전은 **폐쇄망 인프라와 문서 적재(RAG 데이터 파이프라인)까지 완료된 상태**입니다. 질의응답은 아직 Mock 응답을 반환하며, 다음 단계에서 Qdrant 검색과 Ollama 답변을 연결합니다.
+현재 버전은 **폐쇄망 인프라, 문서 적재(RAG 데이터 파이프라인), 운영 질의·장애 진단 RAG, 최종 챗봇 UI까지 구현된 상태**입니다. 브라우저에서 `operation` 또는 `diagnosis` 요청을 보내면 Qdrant에서 관련 문서를 검색하고, Ollama가 검색 결과를 근거로 답변 또는 장애 진단 결과를 생성합니다.
 
 ```text
-[질의응답 - 현재 Mock]
-브라우저 ──POST──→ n8n Webhook /webhook/mock-chat ──→ Mock JSON 응답
+[질의응답·장애진단 - 완료]
+브라우저
+  ──POST /api/rag-chat──→ frontend(Nginx)
+  ──→ n8n 02 질의응답·장애진단 Workflow
+  ──→ Qdrant 검색
+  ──→ Ollama 답변 생성
+  ──→ 출처 포함 JSON 응답
 
 [문서 적재 - 완료]
 knowledge-base/<카테고리>/*.md ──→ 01 문서 적재 Workflow
@@ -62,13 +67,20 @@ frontend(Nginx) · n8n · PostgreSQL · Qdrant · Ollama  (docker-compose 한 �
 - n8n에 Qdrant·Ollama 자격증명과 Workflow 자동 import·publish
 - 이미지 삭제 후 `.tar`만으로 설치 → 적재 → 헬스체크 전 항목 통과 검증
 
+**질의응답·장애진단 RAG 및 챗봇 UI (박윤아)**
+
+- `operation`과 `diagnosis` 요청 유형 분기 및 입력 검증
+- Qdrant `knowledge_base` 검색 결과를 기반으로 Ollama `qwen2.5:3b` 답변 생성
+- 운영 질의 답변과 장애 진단(`summary`, `possibleCauses`, `checkSteps`, `actions`) 구조화 응답 구현
+- 내부 자료에 근거가 부족한 질문은 `제공된 내부 자료에서는 확인할 수 없습니다.`로 답변 보류
+- 응답에 `documentName`, `category`, `section`, `chunkId` 기반 출처 정보 반환
+- 반복 질의를 빠르게 반환하기 위한 응답 캐시 처리
+- `frontend/public/index.html`, `style.css`, `app.js` 기반 최종 챗봇 UI 구현
+- 운영 질의·장애 진단 모드 전환, 로딩 상태, 오류 처리, 장애 로그 입력 UI 구현
+- Nginx 상대 경로 `fetch('/api/rag-chat')`를 통한 UI ↔ n8n Webhook 연동
+
 ### 현재 미구현 기능
 
-- `operation`과 `diagnosis`의 실제 n8n Switch 분기
-- 질문 → Qdrant 검색 → Ollama 답변 생성 (02 질의응답 Workflow)
-- 검색 근거 문서 및 출처 표시, 근거 부족 시 답변 보류
-- 로그 기반 장애 원인 분석
-- 최종 챗봇 UI (`frontend/public/`에 추가 예정. 현재 `http://localhost:8080` 접속 시 403이 정상)
 - 평가 자동화 Workflow
 - PDF·DOCX 문서 적재 (현재 `.md`, `.txt`만 지원)
 - 인증·권한 관리
@@ -96,7 +108,10 @@ BigData_team3/
 ├── frontend/
 │   ├── Dockerfile                     # Nginx 이미지
 │   ├── nginx.conf                     # /api → n8n 프록시 설정
-│   └── public/                        # 최종 챗봇 UI 파일 위치 (index.html, css/, js/ 추가 예정)
+│   └── public/                        # 최종 챗봇 UI
+│       ├── index.html
+│       ├── style.css
+│       └── app.js
 ├── knowledge-base/                    # RAG 지식베이스 문서 (카테고리별 폴더)
 │   ├── operations/
 │   ├── rag-guide/
@@ -105,6 +120,7 @@ BigData_team3/
 ├── workflows/
 │   ├── 00_webhook_mock_prototype.json # Mock Webhook (POST /webhook/mock-chat)
 │   ├── 01_document_ingestion.json     # 문서 적재 (POST /webhook/ingest-documents)
+│   ├── 02_rag_chat_and_diagnosis.json # 운영 질의·장애 진단 RAG (POST /webhook/rag-chat)
 │   └── credentials/
 │       └── local-services.json        # Qdrant·Ollama 자격증명 (비밀값 없음)
 ├── scripts/                           # 설치·적재·점검 스크립트 (.sh / .ps1 / install.bat)
@@ -170,7 +186,7 @@ http://localhost:5500
 
 서버를 종료하려면 실행 중인 터미널에서 `Ctrl + C`를 누릅니다. 화면은 뜨는데 "요청 실패"가 나오면 n8n이 실행 중인지 확인합니다(6.4).
 
-> 최종 챗봇 UI는 `frontend/public/`에 추가되며, 추가 후에는 `http://localhost:8080`에서 열립니다.
+> 초기 Mock UI는 연동 확인용으로 유지하며, 최종 챗봇 UI는 `frontend/public/`에 구현되어 `http://localhost:8080`에서 사용할 수 있습니다.
 
 ### 6.4 n8n 실행 및 Workflow 확인
 
@@ -181,6 +197,7 @@ n8n은 Docker 환경(6.5)으로 실행합니다. `install` 스크립트가 `work
 | `http://localhost:5678` | n8n 편집기 (최초 접속 시 관리자 계정 생성, 계정은 각 PC 로컬에만 저장) |
 | `POST http://localhost:5678/webhook/mock-chat` | 00 Mock Webhook |
 | `POST http://localhost:5678/webhook/ingest-documents` | 01 문서 적재 |
+| `POST http://localhost:5678/webhook/rag-chat` | 02 운영 질의·장애 진단 RAG |
 
 - 이미 설치했다면 `docker compose up -d`로 다시 켭니다.
 - n8n 편집기에서 Workflow를 수정했다면 **Workflow 화면 우측 상단 `...` → Download**로 JSON을 받아 `workflows/`에 저장한 뒤, 아래 명령으로 다시 등록합니다. JSON 최상위 `id`가 같으면 기존 Workflow를 덮어씁니다.
@@ -347,10 +364,11 @@ Qdrant 포인트 payload 구조 (n8n Qdrant Vector Store 노드 기본 키 `cont
 
 | 용도 | 브라우저(Nginx 경유) | n8n 직접 호출 |
 |---|---|---|
-| Mock 질의응답 (현재) | `POST http://localhost:8080/api/mock-chat` | `POST http://localhost:5678/webhook/mock-chat` |
+| Mock 질의응답 (초기 프로토타입) | `POST http://localhost:8080/api/mock-chat` | `POST http://localhost:5678/webhook/mock-chat` |
+| 운영 질의·장애 진단 RAG | `POST http://localhost:8080/api/rag-chat` | `POST http://localhost:5678/webhook/rag-chat` |
 | 문서 적재 | - | `POST http://localhost:5678/webhook/ingest-documents` |
 
-최종 UI는 `fetch('/api/<webhook경로>')`처럼 **상대 경로**로 호출합니다. 02 질의응답 Workflow가 추가되면 이 표에 경로를 추가합니다.
+최종 UI는 `fetch('/api/rag-chat')`처럼 **상대 경로**로 호출합니다. Nginx가 `/api/rag-chat` 요청을 n8n의 `/webhook/rag-chat`으로 프록시합니다.
 
 ### Request Body
 
@@ -370,7 +388,7 @@ Qdrant 포인트 payload 구조 (n8n Qdrant Vector Store 노드 기본 키 `cont
 | `logText` | string | 장애 진단 시 전달할 로그 또는 추가 정보 |
 | `sessionId` | string | 사용자 세션 식별자 |
 
-### 목표 Response (역할 분담 설계서 기준)
+### RAG Response
 
 ```json
 {
@@ -393,7 +411,7 @@ Qdrant 포인트 payload 구조 (n8n Qdrant Vector Store 노드 기본 키 `cont
 - `operation` 요청은 `diagnosis`를 `null`로 반환합니다.
 - 근거가 부족하면 `answer`는 "제공된 내부 자료에서는 확인할 수 없습니다."로 반환하고 `sources`는 빈 배열로 반환합니다.
 
-### 현재 Mock Response
+### 초기 Mock Response
 
 ```json
 {
@@ -406,7 +424,7 @@ Qdrant 포인트 payload 구조 (n8n Qdrant Vector Store 노드 기본 키 `cont
 }
 ```
 
-> 현재 Mock Workflow는 요청 유형 분기가 없어서 `diagnosis` 요청에도 같은 임시 응답을 반환합니다.
+> 초기 Mock Workflow는 요청 유형 분기가 없어서 `diagnosis` 요청에도 같은 임시 응답을 반환합니다.
 
 ### 문서 적재 Response 예시
 
@@ -448,6 +466,14 @@ Mock 프로토타입 평가 자료는 `n8n-webhook-browser-test/evaluation/` 폴
 - TC-003: PASS — 빈 질문 브라우저 입력 검증 확인
 - Docker 환경 전환 후에도 Mock UI(5500) → Docker n8n `mock-chat` 호출 HTTP 200 확인
 
+### RAG 질의응답·장애진단 확인
+
+- `operation` 정상 질문: PASS — Qdrant 검색 결과를 기반으로 답변 및 출처 반환 확인
+- `operation` 범위 밖 질문: PASS — `제공된 내부 자료에서는 확인할 수 없습니다.` 반환 확인
+- `diagnosis` 정상 질문 + 오류 로그: PASS — 진단 요약, 가능한 원인, 확인 순서, 권장 조치 및 출처 반환 확인
+- `diagnosis` 범위 밖 질문: PASS — 미확인 응답 및 빈 출처 반환 확인
+- 최종 챗봇 UI(`http://localhost:8080`)에서 운영 질의·장애 진단 모드, 로딩, 오류 로그 입력, 오류 처리 확인
+
 환경 상태는 아래 명령으로 점검합니다. 하나라도 실패하면 종료 코드 1을 반환합니다.
 
 ```bash
@@ -466,10 +492,10 @@ powershell -ExecutionPolicy Bypass -File scripts\health-check.ps1
 |---|---|---|---|
 | 1 | 원희 | Docker Compose 기동, frontend/Nginx 기본 설정 | ✅ 완료 |
 | 2 | 박윤아 | n8n Webhook 임시 JSON 응답 (Mock) | ✅ 완료 (표정인 프로토타입) |
-| 3 | 박윤아 | HTML/CSS/JavaScript 챗봇 화면, 입력·전송·로딩·오류 처리 | ⏳ |
+| 3 | 박윤아 | HTML/CSS/JavaScript 챗봇 화면, 입력·전송·로딩·오류 처리 | ✅ 완료 |
 | 4 | 김해인 | 운영 문서·장애 사례집 작성 및 카테고리 분류 | ✅ 완료 (21개 문서, `knowledge-base/document_index.csv`) |
 | 5 | 원희 | 문서 적재 Workflow (청크·임베딩·Qdrant 저장) | ✅ 완료 (문서 추가 시 재적재) |
-| 6 | 박윤아 | RAG 검색·Ollama 답변, 일반/진단 분기, 출처·답변 보류 | ⏳ |
+| 6 | 박윤아 | RAG 검색·Ollama 답변, 일반/진단 분기, 출처·답변 보류 | ✅ 완료 |
 | 7 | 표정인 | 평가 Workflow로 응답·검색 품질·출처·답변 보류 자동 검증 | ⏳ |
 | 8 | 이예린 | 전체 Docker Compose 실행, 설치 재현, 사용자 시나리오 테스트 | ⏳ |
 | 9 | 전체 | 네트워크 차단 상태 최종 시연, 제출물 점검 | ⏳ |
@@ -491,7 +517,7 @@ Switch: requestType
 - 잘못된 요청 유형에는 명확한 오류 응답을 반환합니다.
 - 근거가 부족하면 추측하지 않고 답변을 보류합니다.
 - CPU 환경에서 답변 1건에 6~30초가 걸리므로 UI에 로딩 표시가 필요합니다.
-- 완성한 Workflow는 `workflows/02_xxx.json`으로 export해 GitHub에 올립니다.
+- 완성한 Workflow는 `workflows/02_rag_chat_and_diagnosis.json`으로 export해 GitHub에 반영되어 있습니다.
 
 ### 폐쇄망 설치·운영
 
@@ -550,11 +576,13 @@ git push
 [완료] 폐쇄망 설치 (install.bat) → 5개 서비스 기동 → Workflow·자격증명 자동 등록
 [완료] knowledge-base 문서 → 01 문서 적재 → Qdrant 저장 (검색 동작 확인)
 [완료] Mock UI → n8n Webhook → Mock JSON 응답 → 브라우저 출력
+[완료] 최종 UI → 02 질의응답·장애진단 Workflow → Qdrant 검색 → Ollama 답변 → 출처 포함 응답
+[완료] 운영 질의·장애 진단 분기, 근거 부족 시 답변 보류, 장애 로그 기반 진단
 ```
 
-다음 작업자는 인프라와 적재를 다시 만들 필요 없이 아래부터 진행하면 됩니다.
+다음 작업자는 인프라와 적재, 질의응답·장애진단 UI를 다시 만들 필요 없이 아래부터 진행하면 됩니다.
 
 - **지식베이스**: `knowledge-base/<카테고리>/`에 문서를 추가하고 `ingest-documents`로 적재합니다(6.6).
-- **질의응답**: 자동 등록된 자격증명으로 02 질의응답 Workflow(검색·답변·분기·출처)를 구현하고, 최종 UI를 `frontend/public/`에 추가합니다(9장).
+- **질의응답**: `http://localhost:8080`에서 운영 질의·장애 진단 기능을 사용할 수 있으며, API는 `/api/rag-chat`을 호출합니다.
 - **평가**: `ingest-documents` 후 02 Workflow를 반복 호출하는 평가 Workflow를 구현합니다.
 - **설치 재현**: 다른 PC·네트워크 차단 환경에서 6.5 절차대로 설치를 재현합니다.
