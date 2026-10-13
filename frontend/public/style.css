@@ -351,10 +351,8 @@ textarea {
 
 .message {
   display: flex;
-
   width: 100%;
-
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
 .message.user {
@@ -391,36 +389,26 @@ textarea {
 ========================= */
 
 .user-bubble {
-  display: inline-block;
-
+  display: block;
   width: fit-content;
   max-width: 520px;
 
-  min-width: 0;
-  min-height: 0;
+  padding: 10px 14px;
+  margin: 0;
 
-  padding: 9px 14px;
-
-  border-radius:
-    14px 14px 4px 14px;
-
+  border-radius: 14px 14px 4px 14px;
   background: #202125;
-
   color: #ffffff;
 
   font-size: 12px;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.5;
 
   white-space: pre-wrap;
   word-break: keep-all;
   overflow-wrap: break-word;
 
-  box-shadow:
-    0 5px 14px rgba(20,
-      24,
-      32,
-      0.08);
+  box-shadow: 0 5px 14px rgba(20, 24, 32, 0.08);
 }
 
 
@@ -568,8 +556,9 @@ textarea {
 ========================= */
 
 .answer-card {
-  width: 100%;
-
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
 
   border:
@@ -1199,16 +1188,17 @@ textarea {
 
 .answer-card.compact-answer {
   width: fit-content;
-  min-width: 360px;
+  min-width: 0;
   max-width: 520px;
 }
 
 .answer-card.compact-answer .answer-main {
-  padding: 20px 22px;
+  padding: 12px 16px;
 }
 
 .answer-card.compact-answer .answer-body {
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 680px) {
@@ -1344,6 +1334,6 @@ textarea {
   }
 
   .answer-main {
-    padding: 18px;
+    padding: 16px 18px;
   }
 }
