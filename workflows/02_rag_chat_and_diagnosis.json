@@ -647,7 +647,7 @@
           "conditions": [
             {
               "id": "e6c1cee8-3763-439d-826c-8549900ba658",
-              "leftValue": "=={{ $json.diagnosisSupported }}",
+              "leftValue": "={{ $json.diagnosisSupported }}",
               "rightValue": "",
               "operator": {
                 "type": "boolean",
@@ -1069,7 +1069,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "50dce91e-f499-4cc8-9637-3fce1c121de3",
+  "versionId": "151438d5-8f2b-4d84-bc45-dc7b589594d1",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "92034e7835de26ca68d09dad546d2ada6bfc79b18f09e0854a49a3af1abcc21a"
