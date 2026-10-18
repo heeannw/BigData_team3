@@ -88,6 +88,62 @@ const sendButton =
 let currentMode =
   'operation';
 
+const conversations = {
+  operation: document.createElement('div'),
+  diagnosis: document.createElement('div')
+};
+
+const CHAT_STORAGE_KEY = 'offline-rag-chat-history-v1';
+
+// 현재 화면의 대화 내용을 저장
+function saveConversation() {
+  const getCleanHtml = (element) => {
+    const clone = element.cloneNode(true);
+    clone.querySelectorAll('#loadingMessage').forEach(
+      (node) => node.remove()
+    );
+    return clone.innerHTML;
+  };
+
+  try {
+    localStorage.setItem(
+      CHAT_STORAGE_KEY,
+      JSON.stringify({
+        operation: getCleanHtml(
+          currentMode === 'operation'
+            ? conversation
+            : conversations.operation
+        ),
+        diagnosis: getCleanHtml(
+          currentMode === 'diagnosis'
+            ? conversation
+            : conversations.diagnosis
+        )
+      })
+    );
+  } catch (error) {
+    console.error('채팅 기록 저장 실패:', error);
+  }
+}
+
+// 저장된 대화 복원
+function loadConversations() {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem(CHAT_STORAGE_KEY) || '{}'
+    );
+
+    conversations.operation.innerHTML =
+      saved.operation || '';
+
+    conversations.diagnosis.innerHTML =
+      saved.diagnosis || '';
+
+  } catch (error) {
+    console.error('채팅 기록 복원 실패:', error);
+  }
+}
+
 let isLoading =
   false;
 
@@ -202,8 +258,25 @@ function setMode(
     return;
   }
 
-  currentMode =
-    mode;
+  if (currentMode !== mode) {
+    // 현재 화면의 대화를 이전 모드에 보관
+    conversations[currentMode].replaceChildren(
+      ...Array.from(conversation.childNodes)
+    );
+
+    // 새 모드의 대화를 화면으로 이동
+    currentMode = mode;
+
+    conversation.replaceChildren(
+      ...Array.from(conversations[currentMode].childNodes)
+    );
+  }
+
+  // 마지막으로 선택한 모드 기억
+  localStorage.setItem('offline-rag-last-mode', currentMode);
+
+  // 변경된 대화 기록 저장
+  saveConversation();
 
   const isOperation =
     mode === 'operation';
@@ -259,8 +332,13 @@ function setMode(
   }
 
   renderExamples();
+  questionInput.focus({ preventScroll: true });
 
-  questionInput.focus();
+  // 애니메이션 없이 즉시 맨 아래로 이동
+  window.scrollTo({
+    top: document.documentElement.scrollHeight,
+    behavior: 'instant'
+  });
 }
 
 
@@ -366,15 +444,16 @@ function closeLogInput() {
 
 
 function toggleLogInput() {
+  const isHidden =
+    logInputArea.classList.contains('hidden');
 
   if (isLoading) {
+    // 처리 중에는 열지 못하지만 닫기는 허용
+    if (!isHidden) {
+      closeLogInput();
+    }
     return;
   }
-
-  const isHidden =
-    logInputArea.classList.contains(
-      'hidden',
-    );
 
   if (isHidden) {
     openLogInput();
@@ -423,9 +502,7 @@ function appendUserMessage(
   wrapper.innerHTML = `
     <div class="user-message-group">
 
-      <div class="user-bubble">
-        ${escapeHtml(message)}
-      </div>
+      <div class="user-bubble">${escapeHtml(message)}</div>
 
       ${logHtml}
 
@@ -436,6 +513,7 @@ function appendUserMessage(
     wrapper,
   );
 
+  saveConversation();
   scrollToBottom();
 }
 
@@ -641,6 +719,7 @@ function appendAnswer(
     wrapper,
   );
 
+  saveConversation();
   scrollToBottom();
 }
 
@@ -1371,6 +1450,7 @@ function appendError(
     wrapper,
   );
 
+  saveConversation();
   scrollToBottom();
 }
 
@@ -1542,7 +1622,9 @@ function setLoadingState(
     loading;
 
   logToggleButton.disabled =
-    loading;
+  loading && logInputArea.classList.contains('hidden');
+
+  logCloseButton.disabled = false;
 
   logInput.disabled =
     loading;
@@ -1742,8 +1824,24 @@ questionInput.addEventListener(
    Init
 ========================= */
 
-setMode(
-  'operation',
+// 저장된 운영 질의 / 장애 진단 기록 불러오기
+loadConversations();
+
+// 마지막으로 사용한 모드 확인
+const savedMode = localStorage.getItem('offline-rag-last-mode');
+
+const initialMode =
+  savedMode === 'diagnosis' ? 'diagnosis' : 'operation';
+
+// 초기 모드 설정
+currentMode = initialMode;
+
+// 저장된 대화를 실제 채팅창에 표시
+conversation.replaceChildren(
+  ...Array.from(conversations[initialMode].childNodes)
 );
+
+// 버튼과 화면 제목 등 초기화
+setMode(initialMode);
 
 autoResizeTextarea();
