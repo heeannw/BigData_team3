@@ -1,0 +1,263 @@
+{
+  "name": "04 - 일반 LLM 비교 평가",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2eca28c1-dda3-43b9-b0db-c150b4277f1a",
+      "name": "평가 시작",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const CASE_IDS = [\n  \"Q01\",\n  \"Q03\",\n  \"Q04\",\n  \"Q05\",\n  \"Q06\",\n  \"Q07\",\n  \"Q08\",\n  \"Q09\",\n  \"Q10\"\n];\nconst cases = [\n  {\n    \"id\": \"Q01\",\n    \"question\": \"Webhook URL로 요청했더니 404가 나와요. 뭘 확인해야 해요?\",\n    \"requestType\": \"diagnosis\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"게시|Production URL|POST\",\n    \"expected_source\": \"troubleshooting/webhook_not_triggering.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q02\",\n    \"question\": \"n8n 컨테이너가 계속 재시작돼요. 어떤 명령어로 로그를 확인하나요?\",\n    \"requestType\": \"diagnosis\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"docker compose logs n8n|N8N_ENCRYPTION_KEY\",\n    \"expected_source\": \"troubleshooting/container_restart_loop.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q03\",\n    \"question\": \"docker compose up 할 때 5678 포트가 이미 사용 중이라고 나와요.\",\n    \"requestType\": \"diagnosis\",\n    \"logText\": \"Bind for 0.0.0.0:5678 failed: port is already allocated\",\n    \"expected_keywords\": \"netstat|lsof|포트 변경\",\n    \"expected_source\": \"troubleshooting/port_conflict.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q04\",\n    \"question\": \"n8n에서 Ollama에 연결이 안 돼요. ECONNREFUSED가 떠요.\",\n    \"requestType\": \"diagnosis\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"http://ollama:11434|localhost|서비스명\",\n    \"expected_source\": \"troubleshooting/service_connection_failed.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q05\",\n    \"question\": \"문서 적재했더니 NO_DOCUMENTS라고 나와요.\",\n    \"requestType\": \"diagnosis\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"knowledge-base|.md|.txt\",\n    \"expected_source\": \"troubleshooting/ingestion_no_documents.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q06\",\n    \"question\": \"브라우저에서 질문을 보내면 요청 실패가 뜨고 콘솔에 CORS 오류가 나와요.\",\n    \"requestType\": \"diagnosis\",\n    \"logText\": \"blocked by CORS policy\",\n    \"expected_keywords\": \"Allowed Origins|/api\",\n    \"expected_source\": \"troubleshooting/browser_request_failed_cors.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q07\",\n    \"question\": \"첫 질문만 답변이 아주 느린데 정상인가요?\",\n    \"requestType\": \"operation\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"모델 로드|첫 호출|미리 호출\",\n    \"expected_source\": \"operations/health_check_guide.md|troubleshooting/ollama_model_issues.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q08\",\n    \"question\": \"폐쇄망 PC에 처음 설치하는 순서를 알려 주세요.\",\n    \"requestType\": \"operation\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"prepare-offline|install.bat|ingest-documents|health-check\",\n    \"expected_source\": \"operations/offline_install_guide.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q09\",\n    \"question\": \"설치 후 서비스가 정상인지 확인하려면 어떻게 하고, 문제가 있으면 어디를 봐야 해요?\",\n    \"requestType\": \"operation\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"docker compose ps|healthz|health-check\",\n    \"expected_source\": \"operations/health_check_guide.md|troubleshooting/container_restart_loop.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q10\",\n    \"question\": \"문서를 수정했는데 챗봇이 예전 내용으로 답해요. 어떻게 반영하나요?\",\n    \"requestType\": \"operation\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"ingest-documents|전체 재적재\",\n    \"expected_source\": \"operations/document_reingestion.md|rag-guide/chunk_tuning_guide.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q11\",\n    \"question\": \"쿠버네티스에 n8n을 배포하는 방법을 알려 주세요.\",\n    \"requestType\": \"operation\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"제공된 내부 자료에서는 확인할 수 없습니다.\",\n    \"expected_source\": \"\",\n    \"expected_hold\": true\n  },\n  {\n    \"id\": \"Q12\",\n    \"question\": \"n8n에 OpenAI API 키를 등록하는 방법을 알려 주세요.\",\n    \"requestType\": \"operation\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"제공된 내부 자료에서는 확인할 수 없습니다.\",\n    \"expected_source\": \"\",\n    \"expected_hold\": true\n  }\n];\nconst selected = CASE_IDS.length ? cases.filter(c => CASE_IDS.includes(c.id)) : cases;\nif (!selected.length) throw new Error(\"평가 사례가 없습니다.\");\nconst runId = String($execution.id);\nreturn selected.map(c => ({json: {...c, runId, selectedCount: selected.length}}));"
+      },
+      "id": "a2c59b54-6947-469e-9033-735ca2371ca9",
+      "name": "평가 사례 선택",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "3379d8b9-0ad0-4c88-b9a2-528bc622a3f9",
+      "name": "순차 실행",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -112,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $input.first().json;\nconst common = `당신은 n8n과 Docker 운영 질문에 답하는 도우미입니다.\n한국어로 짧고 명확하게 답하세요. Windows 환경을 기준으로 작성하세요.\n내부 문서, 검색 도구, 프로젝트 파일은 제공되지 않습니다. 제공받지 않은 프로젝트의 전용 경로나 스크립트, 설정값을 아는 것처럼 만들지 마세요.\n질문과 오류 로그에서 확인되는 사실과 원인 후보를 구분하세요. 모르면 확인할 수 없다고 설명하세요.\n조회와 상태 확인을 먼저 안내하세요. 종료, 재시작, 설정 변경은 원인과 실행 가능 조건을 명시한 경우에만 안내하세요.\n데이터 삭제, 볼륨 삭제, 초기화, 암호화 키 변경을 임의로 권하지 마세요.\n명령어 질문에는 실제 명령어로 직접 답하세요.`;\nconst format = c.requestType === 'diagnosis'\n? `JSON 객체만 출력하세요. summary는 최대 2문장, possibleCauses, checkSteps, actions는 각각 최대 3개 문자열 배열입니다.\ncheckSteps에는 조회·점검만 넣고 변경 조치는 actions에 조건부로 작성하세요. 근거가 부족한 배열은 비워도 됩니다.\n형식: {\"summary\":\"직접 답변\",\"possibleCauses\":[],\"checkSteps\":[],\"actions\":[]}`\n: `질문에 직접 답하세요. 필요한 경우 최대 3단계로 안내하고 각 문장을 완결하세요. 명령어는 인라인 코드로 쓰세요. 불필요한 제목과 반복 설명은 생략하세요.`;\nconst prompt = `${common}\\n${format}\\n\\n사용자 질문:\\n${c.question}\\n\\n오류 로그:\\n${c.logText || '제공되지 않음'}`;\nconst options = {temperature:0.1, num_predict:c.requestType === 'diagnosis' ? 512 : 128};\nreturn [{json:{...c, clientStartedAt:Date.now(), request:{question:c.question,requestType:c.requestType,logText:c.logText,sessionId:'llm-evaluation-'+c.runId+'-'+c.id}, llmRequest:{model:'qwen2.5:3b',prompt,stream:false,options}, comparisonMode:'historical-rag-vs-no-retrieval'}}];"
+      },
+      "id": "fbe58f2e-ccdb-4fd0-a086-37f76e2f3a70",
+      "name": "요청 준비",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.llmRequest) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 1800000
+        }
+      },
+      "id": "f1aa8c65-8842-4fd6-b0a8-567df14c24ca",
+      "name": "일반 LLM 호출",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        336,
+        208
+      ],
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $('요청 준비').item.json;\nconst r = $input.first().json;\nconst clientElapsedMs = Math.max(0,Date.now()-c.clientStartedAt);\nconst status=Number(r.statusCode || 0)||null;\nlet b=r.body ?? r.data;\nlet parseError=null;\nif(typeof b==='string'){try{b=JSON.parse(b);}catch(e){parseError=String(e);}}\nconst object=b!==null && typeof b==='object' && !Array.isArray(b);\nconst rawText=object && typeof b.response==='string' ? b.response.trim():'';\nlet diagnosis=null, diagnosisParseError=null;\nif(c.requestType==='diagnosis' && rawText){\n  try{diagnosis=JSON.parse(rawText);}catch(e){diagnosisParseError=String(e);}\n}\nconst diagnosisValid=c.requestType==='operation' || (diagnosis!==null && typeof diagnosis==='object' && !Array.isArray(diagnosis) && typeof diagnosis.summary==='string' && !!diagnosis.summary.trim() && ['possibleCauses','checkSteps','actions'].every(k=>Array.isArray(diagnosis[k]) && diagnosis[k].every(v=>typeof v==='string')));\nconst answer=c.requestType==='diagnosis' && diagnosisValid ? diagnosis.summary : rawText;\nconst doneReason=object ? b.done_reason ?? null : null;\nconst checks={http200:status===200,apiObject:object,apiNoError:object && !b.error,generationDone:object && b.done===true,answerNonempty:!!answer,diagnosisSchema:diagnosisValid,notTokenLimit:doneReason!=='length'};\nconst keywords=c.expected_keywords.split('|').filter(Boolean);\nconst keywordMatches=keywords.map(keyword=>({keyword,matched:rawText.toLowerCase().includes(keyword.toLowerCase())}));\nconst responseTimeMs=object && typeof b.total_duration==='number' ? b.total_duration/1000000 : null;\nreturn [{json:{caseId:c.id,runId:c.runId,selectedCount:c.selectedCount,executedAt:new Date().toISOString(),request:c.request,comparisonMode:c.comparisonMode,model:c.llmRequest.model,modelOptions:c.llmRequest.options,httpStatus:status,clientElapsedMs,responseTimeMs,cached:false,within600Seconds:clientElapsedMs<=600000,autoStatus:Object.values(checks).every(Boolean)?'PASS':'FAIL',checks,keywordMatches,humanReview:'PENDING',sourcePaths:[],response:{success:status===200 && object && !b.error,requestType:c.requestType,question:c.question,answer,diagnosis,sources:[],responseTimeMs,cached:false},rawText,doneReason,loadDurationMs:object && typeof b.load_duration==='number' ? b.load_duration/1000000:null,promptEvalCount:object ? b.prompt_eval_count ?? null:null,evalCount:object ? b.eval_count ?? null:null,parseError,diagnosisParseError,transportError:r.error ?? (object ? b.error ?? null:null),abortRun:status===null}}];"
+      },
+      "id": "fb9594af-0800-4139-8ddc-7dbd0f8b0813",
+      "name": "자동 판정",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "32ee3c23-e75b-4897-81ce-891804177c58",
+              "leftValue": "={{ $json.abortRun }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "afc8b888-ed26-48bb-a762-a0fb4fb93f2e",
+      "name": "통신 실패 확인",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        784,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json: {...$input.first().json, runStopped:true, note:'HTTP 상태코드 없는 실패로 다음 사례를 호출하지 않았습니다. 실행 내역에서 실패 결과를 보존하고 서버 실행을 확인하세요.'}}];"
+      },
+      "id": "01d1d573-4a8f-405d-b9cb-57e6d38cfb74",
+      "name": "통신 실패로 중단",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results=$input.all().map(i=>i.json);\nconst fields=['caseId','runId','autoStatus','clientElapsedMs','responseTimeMs','within600Seconds','doneReason','humanReview','answer','rawText'];\nconst quote=v=>'\"'+String(v??'').replace(/\"/g,'\"\"')+'\"';\nconst csv=[fields.join(','),...results.map(r=>fields.map(k=>quote(k==='answer'?r.response?.answer:r[k])).join(','))].join('\\n');\nreturn [{json:{runId:results[0]?.runId,comparisonMode:'historical-rag-vs-no-retrieval',completed:results.length,autoPass:results.filter(r=>r.autoStatus==='PASS').length,autoFail:results.filter(r=>r.autoStatus!=='PASS').length,within600Seconds:results.filter(r=>r.within600Seconds).length,humanReview:'PENDING',results,csv,note:'일반 LLM 비교용. 검색·응답 캐시 없음. 자동 PASS는 구조/완료 상태 검사이며 내용 정확성은 별도 검토. 기존 RAG와 프롬프트·호출 경로 차이가 있어 통제 실험이 아님.'}}];"
+      },
+      "id": "f238bede-e7d6-4efc-a5fd-65b04eea94ba",
+      "name": "평가 결과 요약",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        -112
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "평가 시작": {
+      "main": [
+        [
+          {
+            "node": "평가 사례 선택",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "평가 사례 선택": {
+      "main": [
+        [
+          {
+            "node": "순차 실행",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "순차 실행": {
+      "main": [
+        [
+          {
+            "node": "평가 결과 요약",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "요청 준비",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "요청 준비": {
+      "main": [
+        [
+          {
+            "node": "일반 LLM 호출",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "일반 LLM 호출": {
+      "main": [
+        [
+          {
+            "node": "자동 판정",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "자동 판정": {
+      "main": [
+        [
+          {
+            "node": "통신 실패 확인",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "통신 실패 확인": {
+      "main": [
+        [
+          {
+            "node": "통신 실패로 중단",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "순차 실행",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "0cf34d09-415a-4144-b560-56b71005d3ac",
+  "meta": {
+    "instanceId": "b5394b53b93b4c04a1ef91e0b9e154558edd1e42254e6e1bbf2b7706b5628195"
+  },
+  "nodeGroups": [],
+  "id": "Odvs2zeIMOOQBnVj",
+  "tags": []
+}
