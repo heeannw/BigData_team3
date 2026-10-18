@@ -1,0 +1,263 @@
+{
+  "name": "03 - RAG 자동 평가",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "baee8762-f622-46eb-90cc-172e4f59a8d7",
+      "name": "평가 시작",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -656,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const CASE_IDS = [\"Q03\"];\nconst cases = [\n  {\n    \"id\": \"Q01\",\n    \"question\": \"Webhook URL로 요청했더니 404가 나와요. 뭘 확인해야 해요?\",\n    \"requestType\": \"diagnosis\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"게시|Production URL|POST\",\n    \"expected_source\": \"troubleshooting/webhook_not_triggering.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q02\",\n    \"question\": \"n8n 컨테이너가 계속 재시작돼요. 어떤 명령어로 로그를 확인하나요?\",\n    \"requestType\": \"diagnosis\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"docker compose logs n8n|N8N_ENCRYPTION_KEY\",\n    \"expected_source\": \"troubleshooting/container_restart_loop.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q03\",\n    \"question\": \"docker compose up 할 때 5678 포트가 이미 사용 중이라고 나와요.\",\n    \"requestType\": \"diagnosis\",\n    \"logText\": \"Bind for 0.0.0.0:5678 failed: port is already allocated\",\n    \"expected_keywords\": \"netstat|lsof|포트 변경\",\n    \"expected_source\": \"troubleshooting/port_conflict.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q04\",\n    \"question\": \"n8n에서 Ollama에 연결이 안 돼요. ECONNREFUSED가 떠요.\",\n    \"requestType\": \"diagnosis\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"http://ollama:11434|localhost|서비스명\",\n    \"expected_source\": \"troubleshooting/service_connection_failed.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q05\",\n    \"question\": \"문서 적재했더니 NO_DOCUMENTS라고 나와요.\",\n    \"requestType\": \"diagnosis\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"knowledge-base|.md|.txt\",\n    \"expected_source\": \"troubleshooting/ingestion_no_documents.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q06\",\n    \"question\": \"브라우저에서 질문을 보내면 요청 실패가 뜨고 콘솔에 CORS 오류가 나와요.\",\n    \"requestType\": \"diagnosis\",\n    \"logText\": \"blocked by CORS policy\",\n    \"expected_keywords\": \"Allowed Origins|/api\",\n    \"expected_source\": \"troubleshooting/browser_request_failed_cors.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q07\",\n    \"question\": \"첫 질문만 답변이 아주 느린데 정상인가요?\",\n    \"requestType\": \"operation\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"모델 로드|첫 호출|미리 호출\",\n    \"expected_source\": \"operations/health_check_guide.md|troubleshooting/ollama_model_issues.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q08\",\n    \"question\": \"폐쇄망 PC에 처음 설치하는 순서를 알려 주세요.\",\n    \"requestType\": \"operation\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"prepare-offline|install.bat|ingest-documents|health-check\",\n    \"expected_source\": \"operations/offline_install_guide.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q09\",\n    \"question\": \"설치 후 서비스가 정상인지 확인하려면 어떻게 하고, 문제가 있으면 어디를 봐야 해요?\",\n    \"requestType\": \"operation\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"docker compose ps|healthz|health-check\",\n    \"expected_source\": \"operations/health_check_guide.md|troubleshooting/container_restart_loop.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q10\",\n    \"question\": \"문서를 수정했는데 챗봇이 예전 내용으로 답해요. 어떻게 반영하나요?\",\n    \"requestType\": \"operation\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"ingest-documents|전체 재적재\",\n    \"expected_source\": \"operations/document_reingestion.md|rag-guide/chunk_tuning_guide.md\",\n    \"expected_hold\": false\n  },\n  {\n    \"id\": \"Q11\",\n    \"question\": \"쿠버네티스에 n8n을 배포하는 방법을 알려 주세요.\",\n    \"requestType\": \"operation\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"제공된 내부 자료에서는 확인할 수 없습니다.\",\n    \"expected_source\": \"\",\n    \"expected_hold\": true\n  },\n  {\n    \"id\": \"Q12\",\n    \"question\": \"n8n에 OpenAI API 키를 등록하는 방법을 알려 주세요.\",\n    \"requestType\": \"operation\",\n    \"logText\": \"\",\n    \"expected_keywords\": \"제공된 내부 자료에서는 확인할 수 없습니다.\",\n    \"expected_source\": \"\",\n    \"expected_hold\": true\n  }\n];\nconst selected = CASE_IDS.length ? cases.filter(c => CASE_IDS.includes(c.id)) : cases;\nif (!selected.length) throw new Error(\"평가 사례가 없습니다.\");\nconst runId = String($execution.id);\nreturn selected.map(c => ({json: {...c, runId, selectedCount: selected.length}}));"
+      },
+      "id": "ea5fc373-c681-4d0c-a35f-b7d817551e6a",
+      "name": "평가 사례 선택",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ef4e9cf2-29e8-46c4-a51c-277fbab41831",
+      "name": "순차 실행",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -224,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $input.first().json;\nreturn [{json: {...c, clientStartedAt: Date.now(), request: {\n question: c.question, requestType: c.requestType, logText: c.logText,\n sessionId: 'evaluation-' + c.runId + '-' + c.id\n}}}];"
+      },
+      "id": "eb261526-c3f8-401d-8a9d-30ba3c000172",
+      "name": "요청 준비",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/rag-chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 1800000
+        }
+      },
+      "id": "88f0399d-70f1-448f-9417-54b860c43d8b",
+      "name": "RAG API 호출",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        304
+      ],
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $('요청 준비').item.json;\nconst r = $input.first().json;\nconst clientElapsedMs = Math.max(0, Date.now() - c.clientStartedAt);\nconst status = Number(r.statusCode || 0) || null;\nlet b = r.body ?? r.data;\nlet parseError = null;\nif (typeof b === 'string') { try { b = JSON.parse(b); } catch(e) { parseError = String(e); } }\nconst object = b !== null && typeof b === 'object' && !Array.isArray(b);\nconst sources = object && Array.isArray(b.sources) ? b.sources : [];\nconst abstain = '제공된 내부 자료에서는 확인할 수 없습니다.';\nconst sourcePaths = new Set();\nfor (const s of sources) {\n if (!s || typeof s !== 'object') continue;\n if (typeof s.chunkId === 'string') sourcePaths.add(s.chunkId.split('#')[0]);\n if (s.category && s.documentName) sourcePaths.add(s.category + '/' + s.documentName);\n}\nconst expectedSources = c.expected_source.split('|').filter(Boolean);\nconst held = object && typeof b.answer === 'string' && b.answer.trim() === abstain;\nconst d = object ? b.diagnosis : null;\nconst diagnosisValid = c.requestType === 'operation'\n ? object && b.diagnosis === null\n : d !== null && typeof d === 'object' && !Array.isArray(d)\n   && typeof d.summary === 'string' && !!d.summary.trim()\n   && ['possibleCauses','checkSteps','actions'].every(k => Array.isArray(d[k]) && d[k].every(x => typeof x === 'string'));\nconst checks = {\n http200: status === 200,\n jsonObject: object,\n success: object && b.success === true,\n requestType: object && b.requestType === c.requestType,\n answer: object && typeof b.answer === 'string' && !!b.answer.trim(),\n sourcesArray: object && Array.isArray(b.sources),\n diagnosisSchema: Boolean(diagnosisValid),\n expectedHold: c.expected_hold ? held && sources.length === 0 : !held,\n expectedSource: c.expected_hold ? sources.length === 0 : expectedSources.some(p => sourcePaths.has(p)),\n responseTimeSchema: object && typeof b.responseTimeMs === 'number' && Number.isFinite(b.responseTimeMs) && b.responseTimeMs >= 0\n};\nconst text = [object ? b.answer : '', d ? JSON.stringify(d) : ''].join(' ').toLowerCase();\nconst keywords = c.expected_keywords.split('|').filter(Boolean);\nconst keywordMatches = keywords.map(keyword => ({keyword, matched: text.includes(keyword.toLowerCase())}));\nreturn [{json: {\n caseId: c.id, runId: c.runId, selectedCount: c.selectedCount,\n executedAt: new Date().toISOString(), request: c.request,\n httpStatus: status, clientElapsedMs, cached: object && b.cached === true,\n within600Seconds: clientElapsedMs <= 600000,\n responseTimeMs: object ? b.responseTimeMs ?? null : null,\n autoStatus: Object.values(checks).every(Boolean) ? 'PASS' : 'FAIL',\n checks, keywordMatches, humanReview: 'PENDING',\n sourcePaths: [...sourcePaths], response: b ?? r, parseError,\n transportError: r.error ?? null, abortRun: status === null\n}}];"
+      },
+      "id": "da9fae8f-4cf6-4482-a1e9-0c3de33e538f",
+      "name": "자동 판정",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "32ee3c23-e75b-4897-81ce-891804177c58",
+              "leftValue": "={{ $json.abortRun }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4b379dc2-20c2-4546-b2e3-b1107c84384c",
+      "name": "통신 실패 확인",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json: {...$input.first().json, runStopped:true, note:'HTTP 상태코드 없는 실패로 다음 사례를 호출하지 않았습니다. 실행 내역에서 실패 결과를 보존하고 서버 실행을 확인하세요.'}}];"
+      },
+      "id": "0136e1e2-0d1d-4aaa-a49c-051c9de2055f",
+      "name": "통신 실패로 중단",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = $input.all().map(i => i.json);\nconst rows = results.map(r => ({caseId:r.caseId, autoStatus:r.autoStatus,\n cached:r.cached, clientElapsedMs:r.clientElapsedMs,\n responseTimeMs:r.responseTimeMs, within600Seconds:r.within600Seconds,\n humanReview:r.humanReview, httpStatus:r.httpStatus,\n failedChecks:Object.entries(r.checks || {}).filter(([k,v]) => !v).map(([k]) => k).join('|')}));\nconst fields = ['caseId','autoStatus','cached','clientElapsedMs','responseTimeMs','within600Seconds','humanReview','httpStatus','failedChecks'];\nconst quote = v => '\"' + String(v ?? '').replace(/\"/g,'\"\"') + '\"';\nconst csv = [fields.join(','), ...rows.map(r => fields.map(k => quote(r[k])).join(','))].join('\\n');\nreturn [{json: {\n runId: results[0]?.runId, completed:results.length,\n autoPass:results.filter(r => r.autoStatus === 'PASS').length,\n autoFail:results.filter(r => r.autoStatus !== 'PASS').length,\n cacheHits:results.filter(r => r.cached).length,\n uncachedResponses:results.filter(r => !r.cached).length,\n humanReview:'PENDING', results, csv,\n note:'자동 구조·출처·보류 검사이며 전체 답변 정확도가 아님. cached=true는 신규 생성 성능 집계에서 제외.'\n}}];"
+      },
+      "id": "e30cf928-c740-4518-aac0-9fa6221a8089",
+      "name": "평가 결과 요약",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "평가 시작": {
+      "main": [
+        [
+          {
+            "node": "평가 사례 선택",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "평가 사례 선택": {
+      "main": [
+        [
+          {
+            "node": "순차 실행",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "순차 실행": {
+      "main": [
+        [
+          {
+            "node": "평가 결과 요약",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "요청 준비",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "요청 준비": {
+      "main": [
+        [
+          {
+            "node": "RAG API 호출",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG API 호출": {
+      "main": [
+        [
+          {
+            "node": "자동 판정",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "자동 판정": {
+      "main": [
+        [
+          {
+            "node": "통신 실패 확인",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "통신 실패 확인": {
+      "main": [
+        [
+          {
+            "node": "통신 실패로 중단",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "순차 실행",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "99e739b6-8eb6-429e-928b-4fccfe7ed228",
+  "meta": {
+    "instanceId": "b5394b53b93b4c04a1ef91e0b9e154558edd1e42254e6e1bbf2b7706b5628195"
+  },
+  "nodeGroups": [],
+  "id": "5Qr9KHqXIvpY5TqI",
+  "tags": []
+}

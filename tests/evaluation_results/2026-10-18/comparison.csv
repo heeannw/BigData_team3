@@ -1,0 +1,11 @@
+﻿caseId,ragRunId,ragAutoStatus,ragHumanReview,ragClientElapsedMs,ragServerTimeMs,ragClientWithin600s,ragReason,llmRunId,llmAutoStatus,llmHumanReview,llmClientElapsedMs,llmWithin600s,llmDoneReason,llmReason
+Q01,64,PASS,FAIL,987000,986730,FAIL,게시 등 변경 조치 조건 누락,86,PASS,FAIL,578161,PASS,stop,추상적 점검·조건 없는 변경
+Q02,67,PASS,PASS,344014,343739,PASS,로그 명령 직접 제시,84,PASS,FAIL,485730,PASS,stop,로그 확인 명령 누락
+Q03,70,PASS,FAIL,962792,962489,FAIL,프로세스 종료 안전 조건 누락,86,PASS,FAIL,824875,FAIL,stop,안전 조건 없는 종료·점검에 종료 포함
+Q04,,미기록,FAIL,,903587,미확인,원인 단정·서비스 혼입·점검 조치 혼동,86,PASS,FAIL,696086,FAIL,stop,조건 없는 재시작·구체성 부족
+Q05,43,PASS,FAIL,1397855,1396361,FAIL,chunkId 경로 혼동·점검에 재적재 포함,86,PASS,FAIL,470755,PASS,stop,근거 없는 복원·권한 변경·문서 재설치
+Q06,47,FAIL,평가 불가,1800760,,FAIL,응답 미수신,86,PASS,FAIL,1176650,FAIL,stop,CORS 조정의 구체성·조건 부족
+Q07,52,PASS,FAIL,604825,604556,FAIL,실제 답변 미완성,86,FAIL,FAIL,521534,PASS,length,"삭제·PC 재시작 권고, 질문 불충족"
+Q08,55,PASS,FAIL,434373,434216,PASS,실제 답변 미완성,86,FAIL,FAIL,401491,PASS,length,폐쇄망 조건 미반영
+Q09,58,PASS,FAIL,427487,427205,PASS,실제 답변 미완성,86,FAIL,FAIL,384798,PASS,length,서비스 전체 점검 부족·답변 중단
+Q10,61,PASS,잠정 PASS,329643,328736,PASS,"완결된 재적재 절차, 근거 본문 대조 미완료",86,FAIL,FAIL,398000,PASS,length,재적재 대신 근거 불명 설정 변경·답변 중단
